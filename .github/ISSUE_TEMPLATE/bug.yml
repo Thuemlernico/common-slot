@@ -1,0 +1,32 @@
+name: Bug report
+description: Report reproducible behavior in Common Slot
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not paste real booking links, calendar data, credentials, cookies, or personal information.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the expected and actual behavior with sanitized examples.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include commands, dates, timezone, duration, and a synthetic or provider-owned test link if safe.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Test output or screenshots

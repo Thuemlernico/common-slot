@@ -1,0 +1,11 @@
+api_version: aaf.dev/v1alpha1
+kind: FrameworkExtensions
+framework:
+  name: agile-agentic-framework
+  version: local
+agents:
+  add: []
+  override: []
+skills:
+  add: []
+  override: []

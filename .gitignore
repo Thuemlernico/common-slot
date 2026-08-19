@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+
+# Product Code
+product-code/node_modules/
+product-code/dist/
+product-code/coverage/
+product-code/test-results/
+product-code/playwright-report/
+*.log

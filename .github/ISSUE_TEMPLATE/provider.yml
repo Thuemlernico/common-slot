@@ -1,0 +1,40 @@
+name: Provider support request
+description: Propose a scheduling provider adapter
+title: "[Provider] "
+labels: [provider]
+body:
+  - type: markdown
+    attributes:
+      value: Do not paste private booking links. A provider adapter needs a supported API or a lawful, stable public-page contract.
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: Official API or integration documentation
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication required
+      options:
+        - None for public availability
+        - OAuth
+        - API key
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sanitized test setup
+      description: Explain how maintainers can create a provider-owned test page without using third-party data.
+  - type: textarea
+    id: risks
+    attributes:
+      label: Terms, privacy, rate-limit, and reliability considerations
