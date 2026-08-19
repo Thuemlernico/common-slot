@@ -49,6 +49,22 @@ describe('Google Appointment Schedule production-shaped semantic markup', () => 
     await page.close();
   });
 
+  it('ignores disabled controls inside date lists', async () => {
+    const page = await browser.newPage();
+    await page.setContent(`
+      <body>
+        <p>30 min appointments</p>
+        <div role="list" aria-label="Monday, August 24">
+          <button aria-label="Unavailable" aria-disabled="true">Unavailable</button>
+          <button aria-label="9 AM">9 AM</button>
+        </div>
+      </body>
+    `);
+    const parsed = await parseGooglePage(page, 'Europe/Berlin', 30, 2026, 8);
+    expect(parsed.intervals).toHaveLength(1);
+    await page.close();
+  });
+
   it('fails closed when a date list contains an unrecognized enabled slot control', async () => {
     const page = await browser.newPage();
     await page.setContent(`

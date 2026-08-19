@@ -72,7 +72,7 @@ function parseLocal(date: string, time: string, timezone: string): DateTime {
 export async function parseGooglePage(page: Page, timezone: string, fallbackDurationMinutes: number, referenceYear = DateTime.now().setZone(timezone).year, referenceMonth = DateTime.now().setZone(timezone).month): Promise<{ intervals: Interval[]; appointmentDurationMinutes: number }> {
   const bodyText = await page.locator('body').innerText();
   const appointmentDurationMinutes = parseDuration(bodyText, fallbackDurationMinutes);
-  const slots = await page.locator('button:not([disabled]), [role="button"]:not([aria-disabled="true"])').evaluateAll((elements): RawSlot[] => {
+  const slots = await page.locator('button:not([disabled]):not([aria-disabled="true"]), [role="button"]:not(button):not([aria-disabled="true"])').evaluateAll((elements): RawSlot[] => {
     const output: RawSlot[] = [];
     for (const element of elements) {
       const label = element.getAttribute('aria-label') || element.textContent || '';
