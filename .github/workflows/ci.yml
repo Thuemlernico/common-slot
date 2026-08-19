@@ -11,6 +11,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: product-code
@@ -22,7 +23,7 @@ jobs:
           cache: npm
           cache-dependency-path: product-code/package-lock.json
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: npm test
       - run: npm run build
       - run: npm run test:e2e
