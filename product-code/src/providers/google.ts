@@ -7,6 +7,7 @@ import type { AvailabilityExtractor, ExtractedAvailability, ExtractionOptions } 
 interface RawSlot {
   date: string;
   label: string;
+  strict: boolean;
 }
 
 function resolveDate(value: string, timezone: string, referenceYear: number, referenceMonth: number): string | null {
@@ -47,18 +48,21 @@ function parseDuration(text: string, fallback: number): number {
 }
 
 function timesFromLabel(label: string): [string, string?] | null {
-  const matches = [...label.matchAll(/\b(\d{1,2}:\d{2})\s*([ap]\.?m\.?)?/gi)];
-  if (!matches[0]?.[1]) return null;
-  const first = `${matches[0][1]}${matches[0][2] ? ` ${matches[0][2]}` : ''}`;
-  if (matches[1]?.[1]) {
-    return [first, `${matches[1][1]}${matches[1][2] ? ` ${matches[1][2]}` : ''}`];
-  }
-  return [first];
+  const matches = [...label.matchAll(/\b(\d{1,2}(?::\d{2})?)\s*([ap]\.?m\.?)\b|\b(\d{1,2}:\d{2})\b/gi)]
+    .map((match) => {
+      const value = match[1] ?? match[3];
+      if (!value) return null;
+      return `${value}${match[2] ? ` ${match[2]}` : ''}`;
+    })
+    .filter((value): value is string => value !== null);
+  if (!matches[0]) return null;
+  return matches[1] ? [matches[0], matches[1]] : [matches[0]];
 }
 
 function parseLocal(date: string, time: string, timezone: string): DateTime {
   const normalized = time.replace(/\./g, '').toUpperCase();
-  const format = /[AP]M$/.test(normalized) ? 'yyyy-MM-dd h:mm a' : 'yyyy-MM-dd H:mm';
+  const hasMeridiem = /[AP]M$/.test(normalized);
+  const format = hasMeridiem ? (normalized.includes(':') ? 'yyyy-MM-dd h:mm a' : 'yyyy-MM-dd h a') : 'yyyy-MM-dd H:mm';
   const value = DateTime.fromFormat(`${date} ${normalized}`, format, { zone: timezone, locale: 'en' });
   if (!value.isValid) throw new Error(`Could not parse Google slot time: ${date} ${time}`);
   return value;
@@ -72,11 +76,13 @@ export async function parseGooglePage(page: Page, timezone: string, fallbackDura
     const output: RawSlot[] = [];
     for (const element of elements) {
       const label = element.getAttribute('aria-label') || element.textContent || '';
-      if (!/\d{1,2}:\d{2}/.test(label)) continue;
+      const strict = Boolean(element.closest('[role="list"][aria-label]'));
+      const looksLikeTime = /(?:\b\d{1,2}:\d{2}(?:\s*[ap]\.?m\.?)?\b|\b\d{1,2}\s*[ap]\.?m\.?\b)/i.test(label);
+      if (!strict && !looksLikeTime) continue;
       const container = element.closest('[data-date], time[datetime], section, [role="group"], [role="list"]');
       const explicit = container?.getAttribute('data-date') || container?.querySelector('time[datetime]')?.getAttribute('datetime') || '';
       const surrounding = `${explicit} ${container?.getAttribute('aria-label') || ''} ${container?.textContent || ''} ${label}`;
-      output.push({ date: surrounding.trim(), label: label.trim() });
+      output.push({ date: surrounding.trim(), label: label.trim(), strict });
     }
     return output;
   });
@@ -84,9 +90,11 @@ export async function parseGooglePage(page: Page, timezone: string, fallbackDura
   const intervals: Interval[] = [];
   for (const slot of slots) {
     const date = resolveDate(slot.date, timezone, referenceYear, referenceMonth);
-    if (!date) continue;
     const times = timesFromLabel(slot.label);
-    if (!times) continue;
+    if (!date || !times) {
+      if (slot.strict) throw new Error('Google schedule slot controls are not recognized');
+      continue;
+    }
     const start = parseLocal(date, times[0], timezone);
     const explicitEnd = times[1] ? parseLocal(date, times[1], timezone) : null;
     let end = explicitEnd ?? start.plus({ minutes: appointmentDurationMinutes });

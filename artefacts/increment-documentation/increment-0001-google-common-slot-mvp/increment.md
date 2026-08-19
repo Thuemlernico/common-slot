@@ -34,7 +34,7 @@ A user can paste 2–10 public booking links, select a date range, timezone and 
 
 ## Validation evidence
 
-- `npm run check`: 33 tests passed across 6 files; build passed.
+- `npm run check`: 35 tests passed across 6 files; build passed.
 - `npm run test:e2e`: desktop and mobile Chromium journeys passed.
 - `npm audit --audit-level=high`: 0 vulnerabilities.
 - OKF validator: 0 errors and 0 warnings.

@@ -33,6 +33,36 @@ describe('Google Appointment Schedule production-shaped semantic markup', () => 
     await page.close();
   });
 
+  it('recognizes hour-only AM/PM slot labels instead of silently treating them as unavailable', async () => {
+    const page = await browser.newPage();
+    await page.setContent(`
+      <body>
+        <p>30 min appointments</p>
+        <div role="list" aria-label="Monday, August 24">
+          <div role="listitem"><button aria-label="9 AM">9 AM</button></div>
+        </div>
+      </body>
+    `);
+    const parsed = await parseGooglePage(page, 'Europe/Berlin', 30, 2026, 8);
+    expect(parsed.intervals).toHaveLength(1);
+    expect(new Date(parsed.intervals[0]!.start).toISOString()).toBe('2026-08-24T07:00:00.000Z');
+    await page.close();
+  });
+
+  it('fails closed when a date list contains an unrecognized enabled slot control', async () => {
+    const page = await browser.newPage();
+    await page.setContent(`
+      <body>
+        <p>30 min appointments</p>
+        <div role="list" aria-label="Monday, August 24">
+          <div role="listitem"><button aria-label="Morning slot">Morning slot</button></div>
+        </div>
+      </body>
+    `);
+    await expect(parseGooglePage(page, 'Europe/Berlin', 30, 2026, 8)).rejects.toThrow(/slot controls are not recognized/);
+    await page.close();
+  });
+
   it('carries yearless January dates into the next year from a December view', async () => {
     const page = await browser.newPage();
     await page.setContent(`
