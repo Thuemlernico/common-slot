@@ -8,8 +8,8 @@ updated: "2026-08-20"
 product: "booking-link-overlap"
 sprint: "sprint-0002-provider-adapters"
 pbi_id: "PBI-0002"
-generated: { by: "hermes-scrum-team/gpt-5.6", at: "2026-08-20T14:00:08Z" }
-verified: { by: "agent:product-owner", at: "2026-08-20T14:00:08Z" }
+generated: { by: "hermes-scrum-team/gpt-5.6", at: "2026-08-20T14:53:54Z" }
+verified: { by: "agent:product-owner", at: "2026-08-20T14:53:54Z" }
 sources:
   - artefacts/sprints/sprint-0002-provider-adapters/sprint-backlog/pbi-0002-calendly-calcom-adapters.md
   - artefacts/sprints/sprint-0002-provider-adapters/sprint-backlog/sprint-goal.md
@@ -43,6 +43,13 @@ Common Slot can compare public Google Appointment Schedule, Calendly, and Cal.co
 - The source fingerprints, command shape and sanitized results are recorded in [Live smoke evidence](live-smoke-evidence.md).
 - Maximum inclusive 31-date live timing on public examples after DNS-pinning hardening: Calendly 5.2 seconds and Cal.com 2.6 seconds for 2026-08-20 through 2026-09-19, both below the 25-second source limit.
 - Local and LAN health checks passed on port 3199; the rebuilt UI advertises all three supported providers.
+
+## Change references
+
+- Implementation and release commit: [`85cee2e`](https://github.com/Thuemlernico/common-slot/commit/85cee2ec24fdba8285bf857811e0fd9a676b7e73).
+- Increment diff against the accepted Google/Test-Pyramid baseline: [`04f09d8...85cee2e`](https://github.com/Thuemlernico/common-slot/compare/04f09d810b127662b2e42ba4bffed393bc08c6f1...85cee2ec24fdba8285bf857811e0fd9a676b7e73).
+- Release CI: [GitHub Actions run 32382193837](https://github.com/Thuemlernico/common-slot/actions/runs/32382193837), completed successfully.
+- Pull Request: none; this increment was integrated by an authorized direct push to `main`.
 
 ## Safety evidence
 
