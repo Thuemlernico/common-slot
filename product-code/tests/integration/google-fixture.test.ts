@@ -12,6 +12,12 @@ describe('Google Appointment Schedule fixture parser', () => {
     const page = await browser.newPage();
     const fixture = await readFile(new URL('../fixtures/google-week.html', import.meta.url), 'utf8');
     await page.setContent(fixture);
+    await page.locator('body').evaluate((body) => {
+      body.dataset.slotClicks = '0';
+      for (const button of body.querySelectorAll('button')) {
+        button.addEventListener('click', () => { body.dataset.slotClicks = String(Number(body.dataset.slotClicks ?? '0') + 1); });
+      }
+    });
     const parsed = await parseGooglePage(page, 'Europe/Berlin', 30);
     expect(parsed.appointmentDurationMinutes).toBe(30);
     expect(parsed.intervals).toHaveLength(2);
@@ -19,6 +25,7 @@ describe('Google Appointment Schedule fixture parser', () => {
       start: new Date('2026-08-20T10:00:00.000Z').getTime(),
       end: new Date('2026-08-20T11:00:00.000Z').getTime()
     });
+    expect(await page.locator('body').getAttribute('data-slot-clicks')).toBe('0');
     expect(await page.locator('[aria-label="12:00 PM"]').evaluate((node) => node.matches(':focus'))).toBe(false);
     await page.close();
   });

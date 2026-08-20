@@ -22,9 +22,14 @@ describe('booking URL security', () => {
     expect(classifyBookingUrl('https://notcal.com/demo')).toBe('unknown');
   });
 
-  it.each(['10.0.0.1', '127.0.0.1', '169.254.1.1', '192.168.1.2', '::1', 'fc00::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '0:0:0:0:0:ffff:7f00:1', '::7f00:1'])('rejects private resolution %s', async (address) => {
+  it.each(['10.0.0.1', '127.0.0.1', '169.254.1.1', '192.168.1.2', '::1', 'fc00::1', 'fec0::1', '100::1', '3fff::1', '4000::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '0:0:0:0:0:ffff:7f00:1', '::7f00:1', '64:ff9b::7f00:1', '2002:7f00:1::', '2001::1', '2001:2::1'])('rejects private or non-public resolution %s', async (address) => {
     const lookup = vi.fn(async () => [{ address, family: address.includes(':') ? 6 : 4 }]);
     await expect(validatePublicProviderUrl('https://calendar.google.com/x', lookup)).rejects.toThrow(/public/i);
+  });
+
+  it.each(['64:ff9b::808:808', '2002:808:808::'])('accepts transition address with public embedded IPv4 %s', async (address) => {
+    const lookup = vi.fn(async () => [{ address, family: 6 }]);
+    await expect(validatePublicProviderUrl('https://calendar.google.com/x', lookup)).resolves.toMatchObject({ provider: 'google' });
   });
 
   it('accepts a public exact provider host', async () => {

@@ -10,6 +10,7 @@ export const compareRequestSchema = z.object({
   timezone: z.string().min(1).max(100).refine((zone) => DateTime.local().setZone(zone).isValid, 'Use a valid IANA timezone'),
   durationMinutes: z.number().int().min(5).max(480)
 }).strict().superRefine((value, context) => {
+  if (!DateTime.local().setZone(value.timezone).isValid) return;
   const start = DateTime.fromISO(value.startDate, { zone: value.timezone });
   const end = DateTime.fromISO(value.endDate, { zone: value.timezone });
   if (!start.isValid || !end.isValid || end < start) {

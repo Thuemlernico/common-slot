@@ -42,6 +42,20 @@ describe('POST /api/compare', () => {
     expect(response.body.sources[1]).toMatchObject({ provider: 'Calendly', status: 'unsupported' });
   });
 
+  it.each([
+    'http://calendly.com/example/schedule',
+    'http://cal.com/example/schedule'
+  ])('rejects unsafe schemes for detected unsupported providers: %s', async (unsafeUrl) => {
+    const extractor: AvailabilityExtractor = { extract: vi.fn() };
+    const response = await request(createApp({ extractor })).post('/api/compare').send({
+      ...base, links: [unsafeUrl, 'https://calendly.com/example/safe']
+    }).expect(200);
+    expect(response.body.complete).toBe(false);
+    expect(response.body.sources[0]).toMatchObject({ status: 'failed' });
+    expect(response.body.sources[0].message).toContain('HTTPS');
+    expect(extractor.extract).not.toHaveBeenCalled();
+  });
+
   it('rejects private targets before extraction', async () => {
     const extractor: AvailabilityExtractor = { extract: vi.fn() };
     const response = await request(createApp({ extractor })).post('/api/compare').send({
@@ -71,7 +85,10 @@ describe('POST /api/compare', () => {
   it('validates bounded requests and calendar semantics', async () => {
     const extractor: AvailabilityExtractor = { extract: vi.fn() };
     await request(createApp({ extractor })).post('/api/compare').send({ ...base, links: [a] }).expect(400);
-    await request(createApp({ extractor })).post('/api/compare').send({ ...base, timezone: 'Mars/Olympus' }).expect(400);
+    const timezoneResponse = await request(createApp({ extractor })).post('/api/compare').send({ ...base, timezone: 'Mars/Olympus' }).expect(400);
+    const timezoneMessages = timezoneResponse.body.issues.map((issue: { message: string }) => issue.message);
+    expect(timezoneMessages).toContain('Use a valid IANA timezone');
+    expect(timezoneMessages).not.toContain('End date must be on or after start date');
     await request(createApp({ extractor })).post('/api/compare').send({ ...base, endDate: '2027-08-20' }).expect(400);
   });
 

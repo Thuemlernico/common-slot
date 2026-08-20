@@ -56,19 +56,17 @@ export async function compareAvailability(input: CompareRequest, extractor: Avai
   // Sequential extraction intentionally caps expensive browser concurrency per request.
   for (const bookingUrl of input.links) {
     const provider = classifyBookingUrl(bookingUrl);
-    if (provider === 'calendly' || provider === 'calcom') {
-      sources.push({ provider: providerLabel(provider), status: 'unsupported', bookingUrl, message: 'This provider is detected but not supported in the MVP.' });
-      extractedIntervals.push(null);
-      continue;
-    }
-    if (provider !== 'google') {
-      sources.push({ provider: providerLabel(provider), status: 'failed', bookingUrl, message: 'The URL is not an allowed public booking provider.' });
-      extractedIntervals.push(null);
-      continue;
-    }
     try {
-      // Fast preflight occurs before Playwright starts. The extractor repeats it at the network boundary.
+      // Apply the same URL and DNS policy to every recognized provider before reporting support status.
       await validatePublicProviderUrl(bookingUrl);
+      if (provider === 'calendly' || provider === 'calcom') {
+        sources.push({ provider: providerLabel(provider), status: 'unsupported', bookingUrl, message: 'This provider is detected but not supported in the MVP.' });
+        extractedIntervals.push(null);
+        continue;
+      }
+      if (provider !== 'google') throw new Error('The URL is not an allowed public booking provider.');
+
+      // The extractor repeats validation at the network boundary.
       const result = await withTimeout(25_000, (signal) => extractor.extract(bookingUrl, { ...input, signal }));
       const identity = googleScheduleIdentity(result.canonicalUrl);
       if (seenGoogleSchedules.has(identity)) {
