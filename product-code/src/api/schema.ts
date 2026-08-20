@@ -15,7 +15,7 @@ export const compareRequestSchema = z.object({
   const end = DateTime.fromISO(value.endDate, { zone: value.timezone });
   if (!start.isValid || !end.isValid || end < start) {
     context.addIssue({ code: 'custom', path: ['endDate'], message: 'End date must be on or after start date' });
-  } else if (end.diff(start, 'days').days > 31) {
+  } else if (end.diff(start, 'days').days > 30) {
     context.addIssue({ code: 'custom', path: ['endDate'], message: 'Date range cannot exceed 31 days' });
   }
 });

@@ -4,14 +4,14 @@ import path from 'node:path';
 import { ZodError } from 'zod';
 import { compareAvailability } from './api/compare.js';
 import { compareRequestSchema } from './api/schema.js';
-import { GoogleAppointmentExtractor } from './providers/google.js';
+import { ProviderAvailabilityExtractor } from './providers/router.js';
 import type { AvailabilityExtractor } from './providers/types.js';
 
 export interface AppDependencies { extractor?: AvailabilityExtractor }
 
 export function createApp(dependencies: AppDependencies = {}) {
   const app = express();
-  const extractor = dependencies.extractor ?? new GoogleAppointmentExtractor();
+  const extractor = dependencies.extractor ?? new ProviderAvailabilityExtractor();
   const publicDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
   let activeComparisons = 0;
 

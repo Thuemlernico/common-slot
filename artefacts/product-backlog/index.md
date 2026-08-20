@@ -9,8 +9,12 @@
 
 The order of links in this file is the authoritative Product Backlog order.
 
-1. [PBI-0002 — Add safe Calendly and Cal.com availability adapters](items/pbi-0002-calendly-calcom-adapters.md) — refinement.
+No refined items are currently available.
 
 ## Selected work
 
-- PBI-0001 is selected in [Sprint 0001](../sprints/sprint-0001-common-slot-mvp/sprint-backlog/).
+No items are currently selected.
+
+## Completed work
+
+- [PBI-0002 — Add safe Calendly and Cal.com availability adapters](../sprints/sprint-0002-provider-adapters/sprint-backlog/pbi-0002-calendly-calcom-adapters.md) was completed and remains in [Sprint 0002](../sprints/sprint-0002-provider-adapters/sprint-backlog/).

@@ -32,20 +32,32 @@ describe('POST /api/compare', () => {
     }]);
   });
 
-  it('reports unsupported providers and never returns a partial intersection', async () => {
-    const extractor: AvailabilityExtractor = { extract: vi.fn() };
+  it('loads and intersects mixed Google, Calendly, and Cal.com sources', async () => {
+    const extractor: AvailabilityExtractor = {
+      extract: vi.fn(async (url) => ({
+        canonicalUrl: url,
+        appointmentDurationMinutes: 30,
+        intervals: [{ start: ms('2026-08-20T12:00:00Z'), end: ms('2026-08-20T13:00:00Z') }]
+      }))
+    };
     const response = await request(createApp({ extractor })).post('/api/compare').send({
-      ...base, links: [a, 'https://calendly.com/example/schedule']
+      ...base,
+      links: [a, 'https://calendly.com/example/schedule', 'https://cal.com/example/schedule']
     }).expect(200);
-    expect(response.body.complete).toBe(false);
-    expect(response.body.commonSlots).toEqual([]);
-    expect(response.body.sources[1]).toMatchObject({ provider: 'Calendly', status: 'unsupported' });
+    expect(response.body.complete).toBe(true);
+    expect(response.body.commonSlots).toEqual([{
+      start: '2026-08-20T12:00:00.000Z', end: '2026-08-20T13:00:00.000Z'
+    }]);
+    expect(response.body.sources.map((source: { provider: string; status: string }) => [source.provider, source.status])).toEqual([
+      ['Google Appointment Schedule', 'loaded'], ['Calendly', 'loaded'], ['Cal.com', 'loaded']
+    ]);
+    expect(extractor.extract).toHaveBeenCalledTimes(3);
   });
 
   it.each([
     'http://calendly.com/example/schedule',
     'http://cal.com/example/schedule'
-  ])('rejects unsafe schemes for detected unsupported providers: %s', async (unsafeUrl) => {
+  ])('rejects unsafe schemes before extracting that source: %s', async (unsafeUrl) => {
     const extractor: AvailabilityExtractor = { extract: vi.fn() };
     const response = await request(createApp({ extractor })).post('/api/compare').send({
       ...base, links: [unsafeUrl, 'https://calendly.com/example/safe']
@@ -53,7 +65,8 @@ describe('POST /api/compare', () => {
     expect(response.body.complete).toBe(false);
     expect(response.body.sources[0]).toMatchObject({ status: 'failed' });
     expect(response.body.sources[0].message).toContain('HTTPS');
-    expect(extractor.extract).not.toHaveBeenCalled();
+    expect(extractor.extract).toHaveBeenCalledTimes(1);
+    expect(extractor.extract).not.toHaveBeenCalledWith(unsafeUrl, expect.anything());
   });
 
   it('rejects private targets before extraction', async () => {
@@ -80,6 +93,26 @@ describe('POST /api/compare', () => {
     expect(response.body.complete).toBe(false);
     expect(response.body.commonSlots).toEqual([]);
     expect(response.body.sources[1]).toMatchObject({ status: 'failed', message: expect.stringContaining('duplicates') });
+  });
+
+  it.each([
+    ['https://cal.com/example/30min', 'https://i.cal.com/example/30min?utm_source=duplicate', 'Cal.com'],
+    ['https://cal.com/example/30min', 'https://www.cal.com/example/30min', 'Cal.com'],
+    ['https://calendly.com/example/30min', 'https://www.calendly.com/example/30min?month=2026-08', 'Calendly']
+  ])('normalizes provider hosts and query parameters for duplicate identity: %s', async (first, second, label) => {
+    const extractor: AvailabilityExtractor = {
+      extract: vi.fn(async (url) => ({
+        canonicalUrl: url,
+        appointmentDurationMinutes: 30,
+        intervals: [{ start: ms('2026-08-20T12:00:00Z'), end: ms('2026-08-20T13:00:00Z') }]
+      }))
+    };
+    const response = await request(createApp({ extractor })).post('/api/compare').send({
+      ...base, links: [first, second]
+    }).expect(200);
+    expect(response.body.complete).toBe(false);
+    expect(response.body.commonSlots).toEqual([]);
+    expect(response.body.sources[1]).toMatchObject({ provider: label, status: 'failed', message: expect.stringContaining('duplicates') });
   });
 
   it('validates bounded requests and calendar semantics', async () => {

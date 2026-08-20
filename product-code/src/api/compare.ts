@@ -22,13 +22,21 @@ export interface CompareResponse {
 }
 
 const providerLabel = (provider: Provider): string => ({ google: 'Google Appointment Schedule', calendly: 'Calendly', calcom: 'Cal.com', unknown: 'Unknown' })[provider];
-const googleScheduleIdentity = (value: string): string => {
+const scheduleIdentity = (provider: Provider, value: string): string => {
   const url = new URL(value);
-  const scheduleId = url.pathname.match(/\/schedules\/([^/]+)/)?.[1];
-  if (scheduleId) return `calendar.google.com/schedules/${scheduleId}`;
+  if (provider === 'google') {
+    const scheduleId = url.pathname.match(/\/schedules\/([^/]+)/)?.[1];
+    if (scheduleId) return `google:${scheduleId}`;
+  }
   url.hash = '';
-  url.searchParams.delete('hl');
-  return url.href;
+  url.search = '';
+  url.pathname = url.pathname.replace(/\/+$/, '') || '/';
+  const host = provider === 'calcom' && ['i.cal.com', 'www.cal.com'].includes(url.hostname)
+    ? 'cal.com'
+    : provider === 'calendly' && url.hostname === 'www.calendly.com'
+      ? 'calendly.com'
+      : url.hostname;
+  return `${provider}:${host}${url.pathname}`;
 };
 const safeMessage = (error: unknown): string => {
   const message = error instanceof Error ? error.message : 'Availability could not be read';
@@ -38,20 +46,35 @@ const safeMessage = (error: unknown): string => {
 export async function withTimeout<T>(milliseconds: number, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  const operationPromise = Promise.resolve().then(() => operation(controller.signal));
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      controller.abort();
+      timedOut = true;
       reject(new Error('Availability extraction timed out'));
+      controller.abort();
     }, milliseconds);
   });
-  try { return await Promise.race([operation(controller.signal), timeout]); }
-  finally { if (timer) clearTimeout(timer); }
+  try {
+    return await Promise.race([operationPromise, timeout]);
+  } catch (error) {
+    if (timedOut) {
+      await Promise.race([
+        operationPromise.then(() => undefined, () => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 250))
+      ]);
+      throw new Error('Availability extraction timed out');
+    }
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export async function compareAvailability(input: CompareRequest, extractor: AvailabilityExtractor): Promise<CompareResponse> {
   const extractedIntervals: Array<import('../domain/intervals.js').Interval[] | null> = [];
   const sources: SourceResult[] = [];
-  const seenGoogleSchedules = new Set<string>();
+  const seenSchedules = new Set<string>();
 
   // Sequential extraction intentionally caps expensive browser concurrency per request.
   for (const bookingUrl of input.links) {
@@ -59,22 +82,17 @@ export async function compareAvailability(input: CompareRequest, extractor: Avai
     try {
       // Apply the same URL and DNS policy to every recognized provider before reporting support status.
       await validatePublicProviderUrl(bookingUrl);
-      if (provider === 'calendly' || provider === 'calcom') {
-        sources.push({ provider: providerLabel(provider), status: 'unsupported', bookingUrl, message: 'This provider is detected but not supported in the MVP.' });
-        extractedIntervals.push(null);
-        continue;
-      }
-      if (provider !== 'google') throw new Error('The URL is not an allowed public booking provider.');
+      if (provider === 'unknown') throw new Error('The URL is not an allowed public booking provider.');
 
       // The extractor repeats validation at the network boundary.
       const result = await withTimeout(25_000, (signal) => extractor.extract(bookingUrl, { ...input, signal }));
-      const identity = googleScheduleIdentity(result.canonicalUrl);
-      if (seenGoogleSchedules.has(identity)) {
+      const identity = scheduleIdentity(provider, result.canonicalUrl);
+      if (seenSchedules.has(identity)) {
         sources.push({ provider: providerLabel(provider), status: 'failed', bookingUrl, message: 'This schedule duplicates another submitted source.' });
         extractedIntervals.push(null);
         continue;
       }
-      seenGoogleSchedules.add(identity);
+      seenSchedules.add(identity);
       sources.push({ provider: providerLabel(provider), status: 'loaded', bookingUrl, appointmentDurationMinutes: result.appointmentDurationMinutes });
       extractedIntervals.push(result.intervals);
     } catch (error) {

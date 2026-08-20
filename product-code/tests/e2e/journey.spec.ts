@@ -6,8 +6,8 @@ const response = {
   timezone: 'UTC',
   durationMinutes: 30,
   sources: [
-    { provider: 'Google Appointment Schedule', status: 'loaded', bookingUrl: 'https://calendar.google.com/calendar/appointments/schedules/fixture-a', appointmentDurationMinutes: 30 },
-    { provider: 'Google Appointment Schedule', status: 'loaded', bookingUrl: 'https://calendar.app.google/fixture-b', appointmentDurationMinutes: 60 }
+    { provider: 'Calendly', status: 'loaded', bookingUrl: 'https://calendly.com/fixture/30min', appointmentDurationMinutes: 30 },
+    { provider: 'Cal.com', status: 'loaded', bookingUrl: 'https://cal.com/fixture/60min', appointmentDurationMinutes: 60 }
   ],
   commonSlots: [{ start: '2026-08-20T12:00:00.000Z', end: '2026-08-20T13:00:00.000Z' }],
   warning: 'Availability can change. Reconfirm on every provider page before booking; Common Slot does not reserve or book appointments.'
@@ -17,7 +17,8 @@ test('accessible compare, handoff, and stale-result journey', async ({ page }) =
   await page.route('**/api/compare', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(response) }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Find the time/ })).toBeVisible();
-  await page.getByLabel(/Public booking links/).fill('https://calendar.google.com/calendar/appointments/schedules/fixture-a\nhttps://calendar.app.google/fixture-b');
+  await expect(page.getByText(/Calendly, and Cal\.com public event links are supported/)).toBeVisible();
+  await page.getByLabel(/Public booking links/).fill('https://calendly.com/fixture/30min\nhttps://cal.com/fixture/60min');
   await page.getByLabel('Start date').fill('2026-08-20');
   await page.getByLabel('End date').fill('2026-08-27');
   await page.getByLabel('Timezone').fill('UTC');
@@ -27,7 +28,7 @@ test('accessible compare, handoff, and stale-result journey', async ({ page }) =
   await page.locator('.slot').click();
   await expect(page.getByRole('heading', { name: 'Reconfirm before booking' })).toBeVisible();
   await expect(page.locator('#warning')).toHaveText(response.warning);
-  const providerLinks = page.getByRole('link', { name: /Open Google/ });
+  const providerLinks = page.locator('#provider-links').getByRole('link');
   await expect(providerLinks).toHaveCount(2);
   await expect(providerLinks.nth(0)).toHaveAttribute('href', response.sources[0]!.bookingUrl);
   await expect(providerLinks.nth(1)).toHaveAttribute('href', response.sources[1]!.bookingUrl);
@@ -42,7 +43,7 @@ test('accessible compare, handoff, and stale-result journey', async ({ page }) =
 });
 
 const fillValidForm = async (page: import('@playwright/test').Page) => {
-  await page.getByLabel(/Public booking links/).fill('https://calendar.google.com/calendar/appointments/schedules/fixture-a\nhttps://calendar.app.google/fixture-b');
+  await page.getByLabel(/Public booking links/).fill('https://calendly.com/fixture/30min\nhttps://cal.com/fixture/60min');
   await page.getByLabel('Start date').fill('2026-08-20');
   await page.getByLabel('End date').fill('2026-08-27');
   await page.getByLabel('Timezone').fill('UTC');

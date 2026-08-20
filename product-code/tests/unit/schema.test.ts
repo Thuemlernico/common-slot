@@ -5,7 +5,7 @@ const link = (index: number) => `https://calendar.google.com/calendar/appointmen
 const base = {
   links: [link(1), link(2)],
   startDate: '2026-08-20',
-  endDate: '2026-09-20',
+  endDate: '2026-09-19',
   timezone: 'UTC',
   durationMinutes: 30
 };
@@ -27,7 +27,7 @@ describe('compare request schema boundaries', () => {
 
   it('accepts a 31-day range and rejects a longer range', () => {
     expect(compareRequestSchema.safeParse(base).success).toBe(true);
-    expect(compareRequestSchema.safeParse({ ...base, endDate: '2026-09-21' }).success).toBe(false);
+    expect(compareRequestSchema.safeParse({ ...base, endDate: '2026-09-20' }).success).toBe(false);
   });
 
   it('rejects unknown fields and invalid duration bounds', () => {

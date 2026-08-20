@@ -21,7 +21,7 @@ See [Product Vision](artefacts/product-backlog/product-vision.md) and [Current P
 
 ## Development status
 
-Increment 0001 is executable and accepted: live Google Appointment Schedule comparison, duration-aware common windows, and safe provider handoff. Calendly and Cal.com are detected but remain explicit follow-up work rather than fabricated support.
+Increment 0001 established live Google Appointment Schedule comparison. Increment 0002 adds accepted, experimental, fail-closed public-page adapters for Calendly and Cal.com while preserving duration-aware common windows and safe provider handoff.
 
 ```bash
 cd product-code

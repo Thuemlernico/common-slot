@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { classifyBookingUrl, validatePublicProviderUrl } from '../../src/security/urls.js';
+import { classifyBookingUrl, validatePublicNetworkUrl, validatePublicProviderUrl } from '../../src/security/urls.js';
 
 const publicLookup = vi.fn(async () => [{ address: '142.250.74.14', family: 4 }] as const);
 
@@ -14,11 +14,12 @@ describe('booking URL security', () => {
     await expect(validatePublicProviderUrl(url, publicLookup)).rejects.toThrow();
   });
 
-  it('classifies exact supported and explicitly unsupported hosts', () => {
+  it('classifies exact supported hosts', () => {
     expect(classifyBookingUrl('https://calendar.google.com/calendar/appointments/schedules/demo')).toBe('google');
     expect(classifyBookingUrl('https://calendar.app.google/abc')).toBe('google');
     expect(classifyBookingUrl('https://calendly.com/example/demo')).toBe('calendly');
     expect(classifyBookingUrl('https://cal.com/example/demo')).toBe('calcom');
+    expect(classifyBookingUrl('https://i.cal.com/example/demo')).toBe('calcom');
     expect(classifyBookingUrl('https://notcal.com/demo')).toBe('unknown');
   });
 
@@ -35,5 +36,10 @@ describe('booking URL security', () => {
   it('accepts a public exact provider host', async () => {
     await expect(validatePublicProviderUrl('https://calendar.google.com/calendar/appointments/schedules/demo', publicLookup))
       .resolves.toMatchObject({ provider: 'google', url: expect.any(URL) });
+  });
+
+  it('blocks private subresource targets while allowing public CDN hosts', async () => {
+    await expect(validatePublicNetworkUrl('https://127.0.0.1/pixel')).rejects.toThrow(/public addresses/i);
+    await expect(validatePublicNetworkUrl('https://cdn.example/pixel', publicLookup)).resolves.toMatchObject({ hostname: 'cdn.example' });
   });
 });

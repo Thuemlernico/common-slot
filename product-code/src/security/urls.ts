@@ -10,7 +10,8 @@ const HOST_PROVIDER: Readonly<Record<string, Provider>> = {
   'calendly.com': 'calendly',
   'www.calendly.com': 'calendly',
   'cal.com': 'calcom',
-  'www.cal.com': 'calcom'
+  'www.cal.com': 'calcom',
+  'i.cal.com': 'calcom'
 };
 
 const defaultLookup: Lookup = async (hostname) => dnsLookup(hostname, { all: true, verbatim: true });
@@ -96,25 +97,42 @@ export interface ValidatedProviderUrl {
   provider: Provider;
 }
 
-/** Validate exact provider identity and DNS before any provider network request. */
-export async function validatePublicProviderUrl(input: string, lookup: Lookup = defaultLookup): Promise<ValidatedProviderUrl> {
+/** Validate an arbitrary browser network destination before loading a provider-owned subresource. */
+export async function validatePublicNetworkUrl(input: string, lookup: Lookup = defaultLookup): Promise<URL> {
   let url: URL;
   try {
     url = new URL(input);
   } catch {
-    throw new Error('Invalid booking URL');
+    throw new Error('Invalid network URL');
   }
+  if (url.protocol !== 'https:') throw new Error('Provider resources must use HTTPS');
+  if (url.username || url.password) throw new Error('Credentials in provider resources are not allowed');
+  if (url.port && url.port !== '443') throw new Error('Non-standard resource ports are not allowed');
+
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  if (isIP(hostname)) {
+    if (!isPublicAddress(hostname)) throw new Error('Resource host must resolve only to public addresses');
+    return url;
+  }
+  const addresses = await lookup(hostname);
+  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
+    throw new Error('Resource host must resolve only to public addresses');
+  }
+  return url;
+}
+
+/** Validate exact provider identity and DNS before any provider network request. */
+export async function validatePublicProviderUrl(input: string, lookup: Lookup = defaultLookup): Promise<ValidatedProviderUrl> {
+  let url: URL;
+  try { url = new URL(input); } catch { throw new Error('Invalid booking URL'); }
   if (url.protocol !== 'https:') throw new Error('Booking links must use HTTPS');
   if (url.username || url.password) throw new Error('Credentials in booking URLs are not allowed');
   if (url.port && url.port !== '443') throw new Error('Non-standard ports are not allowed');
-  if (isIP(url.hostname)) throw new Error('IP address targets are not allowed');
+  if (isIP(url.hostname.replace(/^\[|\]$/g, ''))) throw new Error('IP address targets are not allowed');
 
   const provider = classifyBookingUrl(url.href);
   if (provider === 'unknown') throw new Error('Booking provider host is not allowed');
-  const addresses = await lookup(url.hostname);
-  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
-    throw new Error('Provider host must resolve only to public addresses');
-  }
+  await validatePublicNetworkUrl(url.href, lookup);
   return { url, provider };
 }
 

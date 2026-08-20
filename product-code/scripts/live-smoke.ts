@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon';
-import { GoogleAppointmentExtractor } from '../src/providers/google.js';
+import { ProviderAvailabilityExtractor } from '../src/providers/router.js';
 import { compareAvailability } from '../src/api/compare.js';
 import { compareRequestSchema } from '../src/api/schema.js';
 
 const links = process.argv.slice(2);
 if (links.length < 2 || links.length > 10) {
-  console.error('Usage: npm run smoke:live -- <google-link-1> <google-link-2> [more-links]');
+  console.error('Usage: npm run smoke:live -- <public-booking-link-1> <public-booking-link-2> [more-links]');
   console.error('Links are read only for this process and are never printed or persisted.');
   process.exit(2);
 }
@@ -18,7 +18,7 @@ const input = compareRequestSchema.parse({
   timezone,
   durationMinutes: Number(process.env.DURATION_MINUTES ?? 30)
 });
-const result = await compareAvailability(input, new GoogleAppointmentExtractor());
+const result = await compareAvailability(input, new ProviderAvailabilityExtractor());
 for (const [index, source] of result.sources.entries()) {
   console.log(`Source ${index + 1}: ${source.provider} — ${source.status}${source.message ? ` (${source.message})` : ''}`);
 }
